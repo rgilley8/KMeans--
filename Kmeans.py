@@ -10,7 +10,26 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import make_blobs, make_moons
 from sklearn.cluster import KMeans
 import pandas as pd
-df = pd.read_csv("data/train.csv")
+# Here I load in the data that I am analyzing
+df = pd.read_csv(".venv\\Data\\train.csv")
+# This removes any rows with missing values
+df = df.dropna()
+# This whittles dow the data to just the numerical features that I can use for clustering
+X = df[[
+    "Popularity",
+    "danceability",
+    "energy",
+    "loudness",
+    "speechiness",
+    "acousticness",
+    "instrumentalness",
+    "liveness",
+    "valence",
+    "tempo",
+    "duration_in min/ms"
+]].values
+# This standardizes the feature scales
+X = (X - X.mean(axis=0)) / X.std(axis=0)
 
 # ==============================================================================
 # SETUP
@@ -20,15 +39,6 @@ df = pd.read_csv("data/train.csv")
 RNG_SEED = 42
 rng = np.random.default_rng(RNG_SEED)
 
-# make blobs
-X, y_true = make_blobs(
-    n_samples=300, centers=4, cluster_std=0.8, random_state=RNG_SEED  # k
-)
-
-# plot our data
-plt.scatter(X[:, 0], X[:, 1], c=y_true, cmap="viridis", s=25)
-plt.title("Ground Truth (Blobs)")
-plt.show()
 
 # ==============================================================================
 # PART 1 --- BUILDING BLOCKS
@@ -207,7 +217,7 @@ def plot_init_sensitivity():
     20 times with different seeds and plotting the final interias for each run."""
     inertias_20 = []
     for seed in range(20):
-        _, _, inertia, _, _, _ = kmeans(X, 4, np.random.default_rng(seed))
+        _, _, inertia, _, _, _ = kmeans(X, 11, np.random.default_rng(seed))
         inertias_20.append(inertia)
     print(f"Max inertia: {max(inertias_20):.2f}")
     print(f"Min inertia: {min(inertias_20):.2f}")
@@ -245,11 +255,11 @@ def plot_init_centroids(X, init_centroids, title="Initial Centroid Locations"):
 
 def run_metrics():
     """In this function, I run all the metrics needed for comparison."""
-    centroids, labels, inertia, n_iter, inertia_tracker, init_centroids = kmeans(X, rng=rng, k=4)
+    centroids, labels, inertia, n_iter, inertia_tracker, init_centroids = kmeans(X, rng=rng, k=11)
     print(f"Final Inertia: {inertia:.2f}")
     print(f"Iterations: {n_iter}")
     plot_init_centroids(X, init_centroids)
-    plot_clusters(X, labels, centroids, title="K-Means on blobs (k = 4)")
+    plot_clusters(X, labels, centroids, title="K-Means on blobs (k = 11)")
     plot_convergence(inertia_tracker)
     plot_init_sensitivity()
 
@@ -259,10 +269,6 @@ def run_metrics():
 # ==============================================================================
 if __name__ == "__main__":
     run_metrics()
-
-    print(df.head())
-    print(df.columns)
-    print(df.shape)
 
     print("\n" + "=" * 60)
     print("Done!")
