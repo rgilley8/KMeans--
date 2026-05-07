@@ -143,11 +143,21 @@ def kmeans(X, k, rng, max_iter=100, tol=1e-6):
     """Lloyd's algorithm for K-Means clustering."""
     # establish centroids
     centroids = initialize_centroids_plus(X, k, rng)
+    # This saves me an initial copy of the centroid locations
+    init_centroids = centroids.copy()
+
+    # This will track inertia across iterations of the algorithm
+    # Using this I can compare the starting inertia of each initialization method
+    # and I can plot how quickly the inertia drops for each method
+    inertia_tracker = []
+
     n_iter = 0  # safeguard
 
     for n_iter in range(1, max_iter + 1):
         # assign step
         labels = assign_clusters(X, centroids)
+        # Now I compute the inertia for this iteration and add it to the tracker
+        inertia_tracker.append(compute_inertia(X, labels, centroids))
         # update step
         # key is to keep our old centroids
         # to check for convergence
@@ -165,7 +175,7 @@ def kmeans(X, k, rng, max_iter=100, tol=1e-6):
     # final label re-assignment
     labels = assign_clusters(X, centroids)
     inertia = compute_inertia(X, labels, centroids)
-    return centroids, labels, inertia, n_iter
+    return centroids, labels, inertia, n_iter, inertia_tracker, init_centroids
 
 
 def plot_clusters(X, labels, centroids, title="K-Means result"):
@@ -190,56 +200,29 @@ def plot_clusters(X, labels, centroids, title="K-Means result"):
     plt.show()
 
 
-def demo_part2():
-    """Part 2.1 + 2.2 --- run K-Means with k=4 on the well-behaved blobs."""
-    centroids, labels, inertia, n_iter = kmeans(X, rng=rng, k=4)
-    print(f"Final Inertia: {inertia:.2f}")
-    print(f"Iterations: {n_iter}")
-    plot_clusters(X, labels, centroids, title="K-Means on blobs (k = 4)")
-
-
 # ==============================================================================
-# PART 3 --- ELBOW METHOD
+# Adding my own Metrics & Visualizations
 # ==============================================================================
 
-
-def demo_part3():
-    """Part 3 --- elbow plot from k=1 to k=10."""
-    K_range = range(1, 11)
-    inertias = []
-    for k in K_range:
-        best = np.inf
-        for seed in range(10):
-            # run 10 diff random seeds
-            # per k and take the best inertia
-            _, _, inertia, _ = kmeans(X, k, rng=np.random.default_rng(seed))
-            if inertia < best:
-                best = inertia
-        inertias.append(best)
-
+def plot_convergence(inertia_tracker):
+    # This will plot the inertia across each iteration to provide a visual of its
+    # convergence. This can be used to compare the convergence behavior of different
+    # intialization methods
     plt.figure(figsize=(7, 5))
-    plt.plot(list(K_range), inertias)
-    plt.axvline(4, color="red", linestyle="--", alpha=0.5, label="True k = 4")
-    plt.xlabel("K")
-    plt.ylabel("Best inertia (of 10 seeds)")
-    plt.title("Elbow Method")
-    plt.legend()
+    plt.plot(list(range(1, len(inertia_tracker)+1)), inertia_tracker)
+    plt.xlabel("Iteration")
+    plt.ylabel("Inertia")
+    plt.title("Inertia Convergence Across Iterations")
+    plt.xticks(range(1, len(inertia_tracker) + 1))
     plt.tight_layout()
     plt.show()
 
-
-# ==============================================================================
-# PART 4 --- CONFRONTING THE PITFALLS
-# ==============================================================================
-# Each subsection makes one lecture pitfall painfully concrete.
-# ==============================================================================
-
-
-def demo_part4_1_init_sensitivity():
-    """4.1 --- different random seeds produce different final inertias."""
+def plot_init_sensitivity():
+    """This Displays the sensitivity of K-Means to random seeding by running the algorthim
+    20 times with different seeds and plotting the final interias for each run."""
     inertias_20 = []
     for seed in range(20):
-        _, _, inertia, _ = kmeans(X, 4, np.random.default_rng(seed))
+        _, _, inertia, _, _, _ = kmeans(X, 4, np.random.default_rng(seed))
         inertias_20.append(inertia)
     print(f"Max inertia: {max(inertias_20):.2f}")
     print(f"Min inertia: {min(inertias_20):.2f}")
@@ -254,94 +237,43 @@ def demo_part4_1_init_sensitivity():
     plt.show()
 
 
-def demo_part4_2_feature_scale():
-    """4.2 --- what happens when one feature dominates the distance metric."""
-    # multiply column 1 by 1000
-    X_bad = X.copy()
-
-    X_bad[:, 1] *= 1000
-
-    _, labels_bad, _, _ = kmeans(X_bad, 4, rng=rng)
-
-    # standardize the data
-    # we will z-score our X_bad (broken data)
-    # z-scoring is scale-invariant so X_bad &
-    # X_norm will land in the same spot
-    X_std = (X_bad - X_bad.mean(axis=0)) / X_bad.std(axis=0)
-
-    _, labels, _, _ = kmeans(X_std, 4, rng=rng)
-
-    # create 2 plots
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4))
-    axes[0].scatter(X_bad[:, 0], X_bad[:, 1], c=labels_bad, cmap="magma", s=25)
-    axes[0].set_title("Unscaled (col 1 x 1000)")
-    axes[1].scatter(X_std[:, 0], X_std[:, 1], c=labels, cmap="Blues", s=25)
-    axes[1].set_title("Standardized (Fixed)")
-    plt.tight_layout()
-    plt.show()
-
-
-def demo_part4_3_outlier():
-    """4.3 --- a single outlier pulls a centroid off course."""
-    # add one point way away at (50,50)
-    X_out = np.vstack([X, [[50, 50]]])
-
-    centroids_out, labels_out, _, _ = kmeans(X_out, 4, rng=rng)
-
-    # show the distribution of points across the 4 clusters
-    counts = np.bincount(labels_out)
-    print(f"Points per cluster: {counts.tolist()}")
-    print(f"Total: {counts.sum()}")
-
-    plot_clusters(
-        X_out, labels_out, centroids_out, title="K-Means with one outlier at (50, 50)"
+def plot_init_centroids(X, init_centroids, title="Initial Centroid Locations"):
+    # This will plot the initial centroid locations
+    plt.figure(figsize=(7, 5))
+    plt.scatter(X[:, 0], X[:, 1], s=25, alpha=0.6)
+    plt.scatter(
+        # alternatively could do *centroids.T
+        init_centroids[:, 0],
+        init_centroids[:, 1],
+        c="red",
+        marker="X",
+        s=200,
+        edgecolors="black",
+        label="InitialCentroids",
     )
-
-
-def demo_part4_4_moons():
-    """4.4 --- K-Means' spherical assumption fails on non-convex clusters."""
-    X_moons, y_moons = make_moons(n_samples=300, noise=0.05, random_state=RNG_SEED)
-
-    centroids_m, labels_m, _, _ = kmeans(X_moons, k=2, rng=rng)
-
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4))
-    axes[0].scatter(X_moons[:, 0], X_moons[:, 1], c=y_moons, cmap="PuBu", s=25)
-    axes[0].set_title("Ground Truth (two moons)")
-
-    axes[1].scatter(X_moons[:, 0], X_moons[:, 1], c=labels_m, cmap="RdBu", s=25)
-    axes[1].scatter(*centroids_m.T, c="red", marker="X", s=200, edgecolors="black")
-    axes[1].set_title("K-Means Result (Moons)")
+    plt.legend()
+    plt.title(title)
+    plt.xlabel("Feature 1")
+    plt.ylabel("Feature 2")
     plt.tight_layout()
     plt.show()
 
-
-# ==============================================================================
-# PART 5 --- SANITY CHECK AGAINST SCIKIT-LEARN
-# ==============================================================================
-
-
-def demo_part5_sklearn_check():
-    """Compare our implementation to sklearn's."""
-    sk = KMeans(n_clusters=4, n_init=10, random_state=42).fit(X)
-
-    # what does our best get
-    ours_best = min(kmeans(X, 4, rng=rng)[2] for seed in range(10))
-
-    print(f"sklearn inertia: {sk.inertia_:.4f}")
-    print(f"Our best inertia: {ours_best:.4f}")
+def run_metrics():
+    """In this function, I run all the metrics needed for comparison."""
+    centroids, labels, inertia, n_iter, inertia_tracker, init_centroids = kmeans(X, rng=rng, k=4)
+    print(f"Final Inertia: {inertia:.2f}")
+    print(f"Iterations: {n_iter}")
+    plot_init_centroids(X, init_centroids)
+    plot_clusters(X, labels, centroids, title="K-Means on blobs (k = 4)")
+    plot_convergence(inertia_tracker)
+    plot_init_sensitivity()
 
 
 # ==============================================================================
 # MAIN ENTRY POINT
 # ==============================================================================
 if __name__ == "__main__":
-    demo_part2()
-    demo_part3()
-    demo_part4_1_init_sensitivity()
-    demo_part4_2_feature_scale()
-    demo_part4_3_outlier()
-    demo_part4_4_moons()
-    demo_part5_sklearn_check()
+    run_metrics()
 
     print("\n" + "=" * 60)
     print("Done!")
