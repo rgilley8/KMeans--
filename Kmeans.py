@@ -192,6 +192,7 @@ def plot_clusters(X, labels, centroids, title="K-Means result"):
     plt.xlabel("Feature 1")
     plt.ylabel("Feature 2")
     plt.tight_layout()
+    plt.savefig("kmeans_results_clusters.png")
     plt.show()
 
 
@@ -210,6 +211,7 @@ def plot_convergence(inertia_tracker):
     plt.title("Inertia Convergence Across Iterations")
     plt.xticks(range(1, len(inertia_tracker) + 1))
     plt.tight_layout()
+    plt.savefig("kmeans_convergence.png")
     plt.show()
 
 def plot_init_sensitivity():
@@ -229,6 +231,7 @@ def plot_init_sensitivity():
     plt.ylabel("Count")
     plt.title("Inertia Across 20 Random Initializations")
     plt.tight_layout()
+    plt.savefig("kmeans_init_sensitivity.png")
     plt.show()
 
 
@@ -251,6 +254,7 @@ def plot_init_centroids(X, init_centroids, title="Initial Centroid Locations"):
     plt.xlabel("Feature 1")
     plt.ylabel("Feature 2")
     plt.tight_layout()
+    plt.savefig("kmeans_initial_centroids.png")
     plt.show()
 
 def run_metrics():
