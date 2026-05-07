@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.datasets import make_blobs, make_moons
 from sklearn.cluster import KMeans
+import pandas as pd
+df = pd.read_csv("data/train.csv")
 
 # ==============================================================================
 # SETUP
@@ -257,6 +259,10 @@ def run_metrics():
 # ==============================================================================
 if __name__ == "__main__":
     run_metrics()
+
+    print(df.head())
+    print(df.columns)
+    print(df.shape)
 
     print("\n" + "=" * 60)
     print("Done!")
